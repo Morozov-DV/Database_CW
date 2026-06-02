@@ -1,0 +1,158 @@
+{% extends 'todo/base.html' %}
+
+{% block content %}
+<div class="h-[calc(100vh-4rem)] flex flex-col">
+    <div class="bg-white border-b border-slate-200 px-6 py-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4 shadow-sm">
+        <div>
+            <div class="flex items-center gap-2">
+                <a href="{% url 'dashboard' %}" class="text-slate-400 hover:text-slate-600 text-sm">&larr; Панель</a>
+                <span class="text-slate-300">/</span>
+                <h1 class="text-2xl font-bold text-slate-900">{{ project.name }}</h1>
+                <span class="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">{{ project.project_id }}</span>
+            </div>
+            <p class="text-slate-500 text-xs mt-1">{{ project.description|default:"Без опису" }}</p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{% url 'export_project_report' project.project_id %}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition text-sm flex items-center gap-1">
+                Звіт у MS Word
+            </a>
+            <button onclick="document.getElementById('taskModal').classList.remove('hidden')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition text-sm">
+                Додати завдання
+            </button>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="bg-rose-50 border-b border-rose-200 text-rose-700 px-6 py-3 text-sm">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <div class="flex-1 overflow-x-auto p-6 bg-slate-50 flex gap-6 items-start">
+        {% for status, tasks in board_data.items %}
+        <div class="w-72 bg-slate-100 rounded-xl border border-slate-200 flex flex-col max-h-full shadow-sm">
+            <div class="p-3 border-b border-slate-200 flex justify-between items-center bg-white/50 rounded-t-xl">
+                <h3 class="font-bold text-slate-800 text-sm px-1">{{ status }}</h3>
+                <span class="text-xs font-semibold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">{{ tasks|length }}</span>
+            </div>
+            <div class="p-3 overflow-y-auto flex flex-col gap-3 flex-1 min-h-[150px]" id="column-{{ status }}" ondragover="allowDrop(event)" ondrop="drop(event, '{{ status }}')">
+                {% for task in tasks %}
+                <div class="bg-white border border-slate-200 p-4 rounded-lg shadow-sm hover:shadow transition cursor-grab active:cursor-grabbing" id="task-{{ task.task_id }}" draggable="true" ondragstart="drag(event, '{{ task.task_id }}')">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{{ task.task_id }}</span>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded font-medium {% if task.priority == 'Високий' %}bg-rose-50 text-rose-600 border border-rose-100{% elif task.priority == 'Низький' %}bg-slate-100 text-slate-600{% else %}bg-amber-50 text-amber-600 border border-amber-100{% endif %}">
+                            {{ task.priority|default:"Середній" }}
+                        </span>
+                    </div>
+                    <h4 class="font-semibold text-slate-900 text-sm mb-1">{{ task.name }}</h4>
+                    <p class="text-slate-500 text-xs line-clamp-2 mb-3">{{ task.description|default:"" }}</p>
+                    <div class="flex justify-between items-center pt-2 border-t border-slate-100 text-[10px] text-slate-400">
+                        <span class="truncate max-w-[120px]" title="Виконавець">
+                            👤 {{ task.employee.first_name }} {{ task.employee.last_name|slice:":1" }}.
+                        </span>
+                        <span>📅 {{ task.deadline|date:"Y-m-d" }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="taskModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6">
+        <h3 class="text-xl font-bold text-slate-900 mb-4">Нове завдання</h3>
+        <form method="POST" action="{% url 'create_task' project.project_id %}">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">ID завдання (до 10 симв.) *</label>
+                <input type="text" name="task_id" required placeholder="Наприклад, TSK_01" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Назва завдання *</label>
+                <input type="text" name="name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Опис</label>
+                <textarea name="description" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Пріоритет</label>
+                    <select name="priority" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                        <option value="Низький">Низький</option>
+                        <option value="Середній" selected>Середній</option>
+                        <option value="Високий">Високий</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Кінцевий термін</label>
+                    <input type="date" name="deadline" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                </div>
+            </div>
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Виконавець</label>
+                <select name="employee_id" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+                    <option value="">-- Не призначено --</option>
+                    {% for emp in employees %}
+                    <option value="{{ emp.employee_id }}">{{ emp.first_name }} {{ emp.last_name }} ({{ emp.employee_id }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('taskModal').classList.add('hidden')" class="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition text-sm font-medium">
+                    Скасувати
+                </button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition text-sm font-medium shadow-sm">
+                    Зтворити
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function drag(ev, taskId) {
+    ev.dataTransfer.setData("text/plain", taskId);
+}
+
+function allowDrop(ev) {
+    ev.preventDefault();
+}
+
+function drop(ev, statusName) {
+    ev.preventDefault();
+    const taskId = ev.dataTransfer.getData("text/plain");
+    const cardElement = document.getElementById("task-" + taskId);
+    const targetColumn = document.getElementById("column-" + statusName);
+    
+    if (cardElement && targetColumn) {
+        targetColumn.appendChild(cardElement);
+        
+        const formData = new FormData();
+        formData.append('task_id', taskId);
+        formData.append('status', statusName);
+        
+        fetch('{% url "move_card" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                alert('Помилка при збереженні стану в MS SQL Server: ' + data.error);
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            location.reload();
+        });
+    }
+}
+</script>
+{% endblock %}

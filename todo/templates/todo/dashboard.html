@@ -1,0 +1,78 @@
+{% extends 'todo/base.html' %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900">Ваші проєкти</h1>
+            <p class="text-slate-500 text-sm mt-1">Керуйте своїми проєктами та завданнями в одному місці</p>
+        </div>
+        <button onclick="document.getElementById('projectModal').classList.remove('hidden')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition">
+            Створити проєкт
+        </button>
+    </div>
+
+    {% if error %}
+    <div class="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-4 mb-6 rounded shadow-sm text-sm">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for project in projects %}
+        <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+            <div>
+                <div class="flex justify-between items-start mb-2">
+                    <h2 class="text-xl font-bold text-slate-900">{{ project.name }}</h2>
+                    <span class="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-1 rounded">{{ project.project_id }}</span>
+                </div>
+                <p class="text-slate-600 text-sm line-clamp-3 mb-4">{{ project.description|default:"Без опису" }}</p>
+            </div>
+            <div class="border-t border-slate-100 pt-4 mt-2 flex justify-between items-center text-xs text-slate-500">
+                <div>Бюджет: <span class="font-semibold text-slate-700">{{ project.budget|default:"0.00" }}</span></div>
+                <a href="{% url 'board_detail' project.project_id %}" class="text-indigo-600 hover:text-indigo-800 font-medium text-sm flex items-center gap-1">
+                    Перейти до дошки &rarr;
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full bg-slate-50 border border-dashed border-slate-300 rounded-xl p-12 text-center text-slate-500">
+            Проєктів не знайдено. Створіть свій перший проєкт, щоб розпочати роботу.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="projectModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6">
+        <h3 class="text-xl font-bold text-slate-900 mb-4">Новий проєкт</h3>
+        <form method="POST">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">ID проєкту (до 10 симв.) *</label>
+                <input type="text" name="project_id" required placeholder="Наприклад, PRJ_01" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Назва проєкту *</label>
+                <input type="text" name="name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Опис</label>
+                <textarea name="description" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+            </div>
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Бюджет</label>
+                <input type="number" step="0.01" name="budget" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="document.getElementById('projectModal').classList.add('hidden')" class="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition text-sm font-medium">
+                    Скасувати
+                </button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition text-sm font-medium shadow-sm">
+                    Зберегти
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
